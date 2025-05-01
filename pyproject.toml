@@ -1,0 +1,22 @@
+[project]
+name = "ofp"
+authors = [{name="Schmittle", email="mattschmittle@gmail.com"}]
+description = "Simple online traversability estimator"
+version = "0.1.0"
+dependencies = [
+    "numpy",
+    "opencv-python",
+    "h5py",
+    "scikit-learn",
+    "tqdm"
+]
+
+[project.scripts]
+track = "scripts.train:train"
+
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages]
+find = {}
