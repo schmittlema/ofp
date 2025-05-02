@@ -1,0 +1,4 @@
+<launch>
+    <param name="config" value="$(find ofp_ros)/config/ros_config.yaml" />
+    <node name="ofp_node" pkg="ofp" type="ofp_node.py" output="screen"/>
+</launch>

@@ -11,10 +11,13 @@ import time
 
 
 class OnlineFieldPerception:
-    def __init__(self):
+    def __init__(self, embedder=None, gpu=0):
         self.transform = None
         self.centers = None
         self.max_dists = None
+
+        if embedder is not None:
+            self.load_embedder(embedder, gpu)
 
     def _extract_vectors_incremental(self, h5_path, embedding, increment=1):
         vectors = []
@@ -87,6 +90,10 @@ class OnlineFieldPerception:
             self.max_dists = data['max_dists']
 
     def predict(self, image: np.ndarray, embedding: np.ndarray, kern: str = 'avg') -> np.ndarray:
+        # Run embedding model
+        if embedding is None:
+            embedding = self.embedder(image)
+
         emb_shape = embedding.shape[1:]
         emb = embedding.reshape(256, -1).T
 
@@ -105,3 +112,63 @@ class OnlineFieldPerception:
     def visualize(self, image: np.ndarray, trav_img: np.ndarray) -> np.ndarray:
         heatmap = cv2.applyColorMap(trav_img, cv2.COLORMAP_JET)
         return cv2.addWeighted(image, 0.5, heatmap, 0.5, 0)
+
+    def load_embedder(self, name, gpu):
+        if name == "sam2":
+            from sam2.build_sam import build_sam2
+            from sam2.utils.transforms import SAM2Transforms
+            from torchvision.transforms import Resize
+            from sam2.sam2_image_predictor import SAM2ImagePredictor
+
+
+            # Load SAM
+            # checkpoint = "large_models/sam2.1_hiera_large.pt"
+            # model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
+            #mdl = build_sam2(model_cfg, checkpoint, mode="eval").to(f"cuda:{gpu}")
+            self.mdl = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-large").model.to(f"cuda:{gpu}")
+            self.preprocess = SAM2Transforms(resolution=mdl.image_size, mask_threshold=0.0)
+            self.embedder = self.sam2_embeddings
+        elif name == "mobilesam":
+            from mobile_sam import sam_model_registry, SamPredictor
+
+            # Load SAM
+            # ckpt_path = (
+            #     "large_models/mobile_sam.pt"  # sam_vit_l_0b3195.pth" #sam_vit_h_4b8939.pth"
+            # )
+            ckpt_path = hf_hub_download(repo_id="dhkim2810/MobileSAM", filename="mobile_sam.pt")
+            self.mdl = sam_model_registry["vit_t"](checkpoint=ckpt_path).to(f"cuda:{gpu}")
+            self.embedder = self.mobilesam_embeddings
+
+    def sam2_embeddings(self, img):
+        """
+        Generate SAM2 embeddings
+        """
+
+        # SAM reshapes image to make square. Need to resize embedding where padded was applied.
+        embed_h, embed_w = (int(img.shape[0] / 16), int(img.shape[1] / 16))
+        resize = Resize((embed_h, embed_w))
+
+        # Run SAM
+        with torch.inference_mode(), torch.autocast(f"cuda", dtype=torch.bfloat16):
+            x = self.preprocess(img).unsqueeze(0).to(self.mdl.device)
+            out = self.mdl.image_encoder(x)["vision_features"]
+            out_r = resize(out.squeeze(0))
+            x = out_r.cpu().numpy()
+        return x
+
+    def mobilesam_embeddings(self, img):
+        """
+        Generate Mobile SAM embeddings
+        """
+        # SAM pads image to make square. Need to crop embedding where padded was applied.
+        embed_scale = mobilesam.image_encoder.img_size / 64
+        h_crop = int(img.shape[0] / embed_scale)
+        w_crop = int(img.shape[1] / embed_scale)
+
+        # Run SAM
+        with torch.no_grad():
+            x = self.mdl.preprocess(img.unsqueeze(0)).to(self.mdl.device)
+            out = self.mdl.image_encoder(x)
+            out_crop = out[:, :, :h_crop, :w_crop]
+            x = out_crop.squeeze(0).cpu().numpy()
+            return x

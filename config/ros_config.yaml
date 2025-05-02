@@ -1,0 +1,6 @@
+image_topic: "/camera/image_raw"
+output_topic: "/ofp/trav_image"
+vis_topic: "/ofp/trav_vis"
+checkpoint: "/path/to/checkpoint.pkl"
+embedding: "sam2" # (sam2/mobilesam)
+gpu: 0
