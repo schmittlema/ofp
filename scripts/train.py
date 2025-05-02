@@ -11,7 +11,7 @@ def train():
     parser.add_argument("--filename", type=str, default="traversability_model.pkl", help="Filename to save model checkpoint")
     parser.add_argument("--dim", type=int, default=100, help="Number of PCA dimensions")
     parser.add_argument("--k_clusters", type=int, default=100, help="Number of KMeans clusters")
-    parser.add_argument("--increment", type=int, default=1, help="Increment for image sampling")
+    parser.add_argument("-i", type=int, default=1, help="Increment for image sampling")
     parser.add_argument("--kern", type=str, default="", help="Kernel for postprocessing ('', 'avg', 'gaus')")
     parser.add_argument("--viz", action="store_true", help="Run visualization on training data after training")
     args = parser.parse_args()
@@ -24,7 +24,7 @@ def train():
         filename=args.filename,
         dim=args.dim,
         k_clusters=args.k_clusters,
-        increment=args.increment,
+        increment=args.i,
     )
 
     # Run visualization
