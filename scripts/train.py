@@ -61,6 +61,7 @@ def train():
         dim=args.dim,
         k_clusters=args.k_clusters,
         increment=args.i,
+        embedding=args.e
     )
 
     # Run visualization
