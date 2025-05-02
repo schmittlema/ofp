@@ -16,19 +16,18 @@ class OnlineFieldPerception:
         self.centers = None
         self.max_dists = None
 
-    def _extract_vectors_incremental(self, h5_path, increment=1):
+    def _extract_vectors_incremental(self, h5_path, embedding, increment=1):
         vectors = []
         non_trav_v = []
         with h5py.File(h5_path, 'r') as f:
-            front_sam2_ds = f['front_sam2']
+            front_emb_ds = f[f'front_{embedding}']
             trajs = f['Trajectories']
             img_shape = f['front'][0].shape[:2]
 
             for i in tqdm(range(len(f["Index"])), desc="Processing images", bar_format="{l_bar}{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"):
                 if i % increment != 0:
                     continue
-                sensor_idx = f["Index"][i]
-                embedding = front_sam2_ds[sensor_idx]  # shape (256, 45, 45)
+                embedding = front_emb_ds[i]  # shape (256, 45, 45)
                 bool_mask = np.zeros(img_shape, dtype=np.uint8)
                 bool_mask[trajs[i][:, 1], trajs[i][:, 0]] = 1
                 bool_mask = cv2.resize(bool_mask, embedding.shape[1:][::-1], interpolation=cv2.INTER_NEAREST).astype(bool)
@@ -40,12 +39,14 @@ class OnlineFieldPerception:
 
         return np.concatenate(vectors, axis=0), np.concatenate(non_trav_v, axis=0)
 
-    def train(self, data_dir: str, filename: str, dim: int = 100, k_clusters: int = 100, increment: int = 1):
+    def train(self, data_dir: str, filename: str, dim: int = 100, k_clusters: int = 100, increment: int = 1, embedding="sam2"):
         s = time.time()
         h5_path = os.path.join(data_dir, "dataset.h5")
-        vectors, other_vectors = self._extract_vectors_incremental(h5_path, increment)
+        vectors, other_vectors = self._extract_vectors_incremental(h5_path, embedding, increment)
+        BLUE = "\033[94m"
+        RESET = "\033[0m"
 
-        print("Training...")
+        print("Training", end="\r", flush=True)
         if dim is None:
             dim = vectors.shape[1]
             self.transform = lambda x: x
@@ -74,7 +75,7 @@ class OnlineFieldPerception:
         filepath = os.path.join(data_dir, "checkpoints", filename)
         with open(filepath, 'wb') as f:
             pickle.dump({'transform': self.transform, 'centers': self.centers, 'max_dists': self.max_dists}, f)
-        print("Trained!")
+        print(f"{BLUE}Trained!{RESET}")
         print("Train time:",f"\033[92m{time.time()-s:.2f} seconds\033[0m")
         print(filepath)
 

@@ -19,6 +19,7 @@ def train():
     parser.add_argument("--kern", type=str, default="", help="Kernel for postprocessing ('', 'avg', 'gaus')")
     parser.add_argument("--viz", action="store_true", default=False, help="Run visualization on training data after training")
     parser.add_argument("--dataset", action="store_true", default=False, help="Don't rerun tracking/embeddings, just train on a already tracked dataset")
+    parser.add_argument("-e", type=str, default="sam2",  help="Embeddings to use")
     parser.add_argument(
         "--topic",
         type=str,
@@ -48,7 +49,7 @@ def train():
         data_dir = track(track_args)
 
         # Embeddings
-        dp.add_embeddings(data_dir, "sam2", 0, True, True, False)
+        dp.add_embeddings(data_dir, args.e, 0, True, True, False)
     else:
         data_dir = args.video_path
 
@@ -69,7 +70,7 @@ def train():
 
         with h5py.File(os.path.join(data_dir, "dataset.h5"), 'r') as f:
             front = f['front'][:]
-            front_sam2 = f['front_sam2'][:]
+            front_sam2 = f[f'front_{args.e}'][:]
             for i in tqdm(range(len(f["front"])), desc="Visualizing", bar_format="{l_bar}{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"):
                 image = front[i]           # (720, 720, 3)
                 embedding = front_sam2[i]  # (256, 45, 45)
