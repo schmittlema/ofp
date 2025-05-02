@@ -75,7 +75,7 @@ class OnlineFieldPerception:
         with open(filepath, 'wb') as f:
             pickle.dump({'transform': self.transform, 'centers': self.centers, 'max_dists': self.max_dists}, f)
         print("Trained!")
-        print("Total time:",f"\033[92m{time.time()-s:.2f} seconds\033[0m")
+        print("Train time:",f"\033[92m{time.time()-s:.2f} seconds\033[0m")
         print(filepath)
 
     def load(self, filepath: str):

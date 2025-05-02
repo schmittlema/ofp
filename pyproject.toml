@@ -8,8 +8,8 @@ dependencies = [
     "opencv-python",
     "h5py",
     "scikit-learn",
-    "tqdm"
-    "art"
+    "tqdm",
+    "art",
 ]
 
 [project.scripts]

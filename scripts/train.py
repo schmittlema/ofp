@@ -4,23 +4,53 @@ import os
 import h5py
 import cv2
 from ofp.ofp import OnlineFieldPerception
+from scripts.track import track
+import scripts.data_products as dp
+import time
 
 def train():
     parser = argparse.ArgumentParser(description="Train OnlineFieldPerception model")
-    parser.add_argument("data_dir", type=str, help="Path to directory containing dataset.h5")
-    parser.add_argument("--filename", type=str, default="traversability_model.pkl", help="Filename to save model checkpoint")
+    parser.add_argument("video_path", type=str, help="Path to 1. dir with png/jpg 2. mp4 file")
+    parser.add_argument("--filename", type=str, default="ofp_model.pkl", help="Filename to save model checkpoint")
     parser.add_argument("--dim", type=int, default=100, help="Number of PCA dimensions")
     parser.add_argument("--k_clusters", type=int, default=100, help="Number of KMeans clusters")
     parser.add_argument("-i", type=int, default=1, help="Increment for image sampling")
     parser.add_argument("--kern", type=str, default="", help="Kernel for postprocessing ('', 'avg', 'gaus')")
     parser.add_argument("--viz", action="store_true", help="Run visualization on training data after training")
+    parser.add_argument(
+        "--topic",
+        type=str,
+        default="/insta360/front/compressed",
+        help="Topic to extract, only if bag provided",
+    )
+    s = time.time()
     args = parser.parse_args()
 
     art.tprint("Online Field Perception") # You can change font if desired
 
+    # Tracking
+    track_args = argparse.Namespace(
+        video_path=args.video_path,
+        reuse_tracks=False,
+        mp4=False, # Only for nested
+        frames=False, # Only for nested
+        endpoint=False,
+        tartan=False,
+        fps=24,
+        no_viz=False, # its the opposite
+        topic=args.topic,
+        s=0.25,
+        compress_images=False,
+    )
+    data_dir = track(track_args)
+
+    # Embeddings
+    dp.add_embeddings(data_dir, "sam2", 0, True, True, False)
+
+    # Training
     model = OnlineFieldPerception()
     model.train(
-        data_dir=args.data_dir,
+        data_dir=data_dir,
         filename=args.filename,
         dim=args.dim,
         k_clusters=args.k_clusters,
@@ -42,3 +72,5 @@ def train():
                 vis = model.visualize(image, trav_img)
 
                 cv2.imwrite(os.path.join(vis_dir, f"{i:04d}.png"), vis)
+
+    print("Total time:",f"\033[92m{time.time()-s:.2f} seconds\033[0m")
