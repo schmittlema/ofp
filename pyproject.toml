@@ -9,10 +9,11 @@ dependencies = [
     "h5py",
     "scikit-learn",
     "tqdm"
+    "art"
 ]
 
 [project.scripts]
-track = "scripts.train:train"
+train = "scripts.train:train"
 
 [build-system]
 requires = ["setuptools>=43.0.0", "wheel"]

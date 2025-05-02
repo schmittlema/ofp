@@ -7,6 +7,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from tqdm import tqdm
 from typing import Optional
+import time
 
 
 class OnlineFieldPerception:
@@ -23,7 +24,7 @@ class OnlineFieldPerception:
             trajs = f['Trajectories']
             img_shape = f['front'][0].shape[:2]
 
-            for i in tqdm(range(len(f["Index"])), desc="Processing images"):
+            for i in tqdm(range(len(f["Index"])), desc="Processing images", bar_format="{l_bar}{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"):
                 if i % increment != 0:
                     continue
                 sensor_idx = f["Index"][i]
@@ -40,9 +41,11 @@ class OnlineFieldPerception:
         return np.concatenate(vectors, axis=0), np.concatenate(non_trav_v, axis=0)
 
     def train(self, data_dir: str, filename: str, dim: int = 100, k_clusters: int = 100, increment: int = 1):
+        s = time.time()
         h5_path = os.path.join(data_dir, "dataset.h5")
         vectors, other_vectors = self._extract_vectors_incremental(h5_path, increment)
 
+        print("Training...")
         if dim is None:
             dim = vectors.shape[1]
             self.transform = lambda x: x
@@ -68,8 +71,12 @@ class OnlineFieldPerception:
         self.max_dists = np.array(self.max_dists)
 
         os.makedirs(os.path.join(data_dir, "checkpoints"), exist_ok=True)
-        with open(os.path.join(data_dir, "checkpoints", filename), 'wb') as f:
+        filepath = os.path.join(data_dir, "checkpoints", filename)
+        with open(filepath, 'wb') as f:
             pickle.dump({'transform': self.transform, 'centers': self.centers, 'max_dists': self.max_dists}, f)
+        print("Trained!")
+        print("Total time:",f"\033[92m{time.time()-s:.2f} seconds\033[0m")
+        print(filepath)
 
     def load(self, filepath: str):
         with open(filepath, 'rb') as f:
