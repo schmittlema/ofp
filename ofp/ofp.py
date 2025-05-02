@@ -8,6 +8,9 @@ from sklearn.cluster import KMeans
 from tqdm import tqdm
 from typing import Optional
 import time
+import torch
+from torchvision.transforms import Resize
+from huggingface_hub import hf_hub_download
 
 
 class OnlineFieldPerception:
@@ -16,6 +19,7 @@ class OnlineFieldPerception:
         self.centers = None
         self.max_dists = None
 
+        self.embedder = None
         if embedder is not None:
             self.load_embedder(embedder, gpu)
 
@@ -117,7 +121,6 @@ class OnlineFieldPerception:
         if name == "sam2":
             from sam2.build_sam import build_sam2
             from sam2.utils.transforms import SAM2Transforms
-            from torchvision.transforms import Resize
             from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 
@@ -126,7 +129,7 @@ class OnlineFieldPerception:
             # model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
             #mdl = build_sam2(model_cfg, checkpoint, mode="eval").to(f"cuda:{gpu}")
             self.mdl = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-large").model.to(f"cuda:{gpu}")
-            self.preprocess = SAM2Transforms(resolution=mdl.image_size, mask_threshold=0.0)
+            self.preprocess = SAM2Transforms(resolution=self.mdl.image_size, mask_threshold=0.0)
             self.embedder = self.sam2_embeddings
         elif name == "mobilesam":
             from mobile_sam import sam_model_registry, SamPredictor
@@ -154,6 +157,7 @@ class OnlineFieldPerception:
             out = self.mdl.image_encoder(x)["vision_features"]
             out_r = resize(out.squeeze(0))
             x = out_r.cpu().numpy()
+        print(x.shape)
         return x
 
     def mobilesam_embeddings(self, img):
@@ -161,13 +165,13 @@ class OnlineFieldPerception:
         Generate Mobile SAM embeddings
         """
         # SAM pads image to make square. Need to crop embedding where padded was applied.
-        embed_scale = mobilesam.image_encoder.img_size / 64
+        embed_scale = self.mdl.image_encoder.img_size / 64
         h_crop = int(img.shape[0] / embed_scale)
         w_crop = int(img.shape[1] / embed_scale)
 
         # Run SAM
         with torch.no_grad():
-            x = self.mdl.preprocess(img.unsqueeze(0)).to(self.mdl.device)
+            x = self.mdl.preprocess(torch.tensor(img).permute(2,0,1).unsqueeze(0).to(self.mdl.device))
             out = self.mdl.image_encoder(x)
             out_crop = out[:, :, :h_crop, :w_crop]
             x = out_crop.squeeze(0).cpu().numpy()
