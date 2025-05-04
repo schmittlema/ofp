@@ -18,6 +18,8 @@ def train():
     parser.add_argument("-i", type=int, default=1, help="Increment for image sampling")
     parser.add_argument("--kern", type=str, default="", help="Kernel for postprocessing ('', 'avg', 'gaus')")
     parser.add_argument("--viz", action="store_true", default=False, help="Run visualization on training data after training")
+    parser.add_argument("--tracks-viz", action="store_true", default=False, help="Visualization for all the tracking code")
+    parser.add_argument("--reuse-tracks", action="store_true", default=False, help="Reuse tracks")
     parser.add_argument("--dataset", action="store_true", default=False, help="Don't rerun tracking/embeddings, just train on a already tracked dataset")
     parser.add_argument("-e", type=str, default="sam2",  help="Embeddings to use")
     parser.add_argument(
@@ -35,13 +37,13 @@ def train():
     if not args.dataset:
         track_args = argparse.Namespace(
             video_path=args.video_path,
-            reuse_tracks=False,
+            reuse_tracks=args.reuse_tracks,
             mp4=False, # Only for nested
             frames=False, # Only for nested
             endpoint=False,
             tartan=False,
             fps=24,
-            no_viz=False, # its the opposite
+            no_viz=args.tracks_viz,
             topic=args.topic,
             s=0.25,
             compress_images=False,
